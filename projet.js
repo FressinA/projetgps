@@ -1,74 +1,68 @@
-const express = require('express'); // Pour créer une API REST ou serveur web
+const express = require('express'); // Pour créer l'API REST
+const { ReadlineParser } = require('@serialport/parser-readline');
+const { SerialPort } = require('serialport');
+
 const app = express();
 const PORT = 3000;
 
-const { ReadlineParser } = require('@serialport/parser-readline'); // Changement ici
-const { SerialPort } = require('serialport');
+// Configuration du port série
 const port = new SerialPort({
-  path: 'COM3',
+  path: 'COM3', // Remplacez par votre port série réel
   baudRate: 9600,
   dataBits: 8,
   stopBits: 1,
   parity: 'none',
 });
 
+// Parseur pour lire les trames ligne par ligne
 const parser = port.pipe(new ReadlineParser({ delimiter: '\r\n' }));
 
-// Variables pour stocker les données GPS extraites
+// Variables pour stocker la latitude et la longitude
 let latitude = null;
 let longitude = null;
-let altitude = null;
 
-// Fonction pour parser une trame GPS
+// Fonction pour extraire la latitude et la longitude depuis une trame GPGGA
 function parseGPSData(data) {
-  // Exemple de trame GPGGA : $GPGGA,123456.00,4916.45,N,12311.12,W,1,08,1.0,10.0,M,-33.0,M,,*48
   const parts = data.split(',');
 
-  if (parts[0] === '$GPGGA') {
-    latitude = parseCoordinate(parts[2], parts[3]); // Latitude
-    longitude = parseCoordinate(parts[4], parts[5]); // Longitude
-    altitude = parts[9]; // Altitude (en mètres)
+  if (parts[0] === '$GPGGA') { // Vérifie que la trame est bien de type GPGGA
+    latitude = parseCoordinate(parts[2], parts[3]); // Extraction de la latitude
+    longitude = parseCoordinate(parts[4], parts[5]); // Extraction de la longitude
+    console.log(`Latitude : ${latitude}, Longitude : ${longitude}`); // Affiche les données dans la console
   }
 }
 
-// Fonction pour convertir une coordonnée en degré décimal
+// Fonction pour convertir une coordonnée en degrés décimaux
 function parseCoordinate(coordinate, direction) {
-  const degrees = parseFloat(coordinate.slice(0, coordinate.length - 7));
-  const minutes = parseFloat(coordinate.slice(coordinate.length - 7));
+  if (!coordinate || !direction) return null;
+
+  const degrees = parseFloat(coordinate.slice(0, 2));
+  const minutes = parseFloat(coordinate.slice(2));
 
   let decimalCoord = degrees + minutes / 60;
   if (direction === 'S' || direction === 'W') {
-    decimalCoord *= -1; // Les coordonnées sud et ouest sont négatives
+    decimalCoord *= -1; // Sud et Ouest sont négatifs
   }
 
   return decimalCoord;
 }
 
-// Écoute des données depuis le port série (trames GPS)
+// Écoute des trames GPS sur le port série
 parser.on('data', (data) => {
-  console.log(`Trame GPS reçue : ${data}`);
-  parseGPSData(data);  // Transforme les données en variables
+  console.log(`Trame reçue : ${data}`);
+  parseGPSData(data); // Analyse la trame pour extraire les données
 });
 
-// Route pour récupérer les données GPS
+// Route API pour récupérer les coordonnées GPS
 app.get('/gps', (req, res) => {
   if (latitude !== null && longitude !== null) {
-    res.json({
-      latitude,
-      longitude,
-      altitude,
-    });  // Envoie les coordonnées GPS sous forme de JSON
+    res.json({ latitude, longitude }); // Envoie uniquement latitude et longitude
   } else {
     res.status(404).send('Aucune donnée GPS disponible');
   }
 });
 
-// Démarrer un serveur web
-app.get('/', (req, res) => {
-  res.send('Serveur Node.js prêt à recevoir des données');
-});
-
-// Serveur HTTP sur le port 3000
+// Démarre le serveur web
 app.listen(PORT, () => {
   console.log(`Serveur en écoute sur http://localhost:${PORT}`);
 });
