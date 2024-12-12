@@ -64,5 +64,5 @@ app.get('/gps', (req, res) => {
 
 // Démarre le serveur web
 app.listen(PORT, () => {
-  console.log(`Serveur en écoute sur http://localhost:${PORT}`);
+  console.log(`Serveur en écoute sur http://192.168.65.98:${PORT}`);
 });
