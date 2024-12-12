@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebSocket GPS Client</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; }
+    #data { margin-top: 20px; font-size: 1.5rem; color: #007BFF; }
+  </style>
+</head>
+<body>
+  <h1>WebSocket GPS Client</h1>
+  <div id="data">Waiting for GPS data...</div>
+
+  <script>
+    // Se connecter au serveur WebSocket
+    const socket = new WebSocket('ws://localhost:3001');
+
+    // Afficher les messages du serveur
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.latitude && data.longitude) {
+        document.getElementById('data').innerText =
+          `Latitude: ${data.latitude}, Longitude: ${data.longitude}`;
+      } else {
+        document.getElementById('data').innerText = data.message;
+      }
+    };
+
+    // Gérer les erreurs
+    socket.onerror = (error) => {
+      console.error('Erreur WebSocket:', error);
+    };
+
+    // Gérer la fermeture de la connexion
+    socket.onclose = () => {
+      document.getElementById('data').innerText = 'Connexion fermée.';
+    };
+  </script>
+</body>
+</html>
